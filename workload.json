@@ -1,0 +1,31 @@
+{
+  "cenarios": [
+    {
+      "id": 1,
+      "nome": "Carga leve",
+      "streams": 1,
+      "resolucao": "360p",
+      "modelo": "YOLOv8n",
+      "fps": 15,
+      "descricao": "Ambiente ideal para medir desempenho base e latência mínima."
+    },
+    {
+      "id": 2,
+      "nome": "Carga média",
+      "streams": 5,
+      "resolucao": "720p",
+      "modelo": "YOLOv8s",
+      "fps": 30,
+      "descricao": "Simula uso em aplicações práticas, como segurança de pequeno porte."
+    },
+    {
+      "id": 3,
+      "nome": "Carga alta",
+      "streams": 20,
+      "resolucao": "1080p",
+      "modelo": "YOLOv8m",
+      "fps": 60,
+      "descricao": "Testa limites do sistema, identificando queda de performance e uso máximo de recursos."
+    }
+  ]
+}
