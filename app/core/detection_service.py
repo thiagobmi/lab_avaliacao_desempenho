@@ -33,6 +33,9 @@ frame_converter_executor = ThreadPoolExecutor(
     max_workers=4, thread_name_prefix="frame_converter"
 )
 
+# Métricas de performance por câmera
+camera_metrics = {}
+
 
 def initialize_tracker_for_camera(camera_id: int) -> None:
     """
@@ -40,6 +43,15 @@ def initialize_tracker_for_camera(camera_id: int) -> None:
     """
     if camera_id not in object_trackers:
         object_trackers[camera_id] = {}
+    
+    # Inicializa métricas para a câmera (start_time será definido no primeiro frame)
+    if camera_id not in camera_metrics:
+        camera_metrics[camera_id] = {
+            "frames_processed": 0,
+            "total_inference_time": 0.0,
+            "start_time": None,
+            "last_fps_calculation": None,
+        }
 
 
 def extract_detections(result, scale_factor=1.0) -> List[Dict[str, Any]]:
@@ -234,6 +246,31 @@ def validate_detection_consistency(
     return is_valid, most_common_class
 
 
+def get_camera_metrics(camera_id: int) -> Tuple[float, float]:
+    """
+    Retorna a latência média do YOLO e o FPS médio da câmera.
+    """
+    if camera_id not in camera_metrics:
+        return 0.0, 0.0
+    
+    metrics = camera_metrics[camera_id]
+    
+    # Se ainda não processou nenhum frame, retorna 0
+    if metrics["start_time"] is None or metrics["frames_processed"] == 0:
+        return 0.0, 0.0
+    
+    # Calcula latência média (em ms)
+    avg_latency = (metrics["total_inference_time"] / metrics["frames_processed"]) * 1000
+    
+    # Calcula FPS médio desde o primeiro frame processado
+    elapsed_time = time.time() - metrics["start_time"]
+    avg_fps = 0.0
+    if elapsed_time > 0:
+        avg_fps = metrics["frames_processed"] / elapsed_time
+    
+    return round(avg_latency, 2), round(avg_fps, 2)
+
+
 def send_single_event(
     obj_data: dict, stream_config: StreamConfig, camera_id: int
 ) -> bool:
@@ -269,6 +306,9 @@ def send_single_event(
         if not min_len or not is_class_consistent:
             return False
 
+        # Obtém métricas da câmera
+        latency, fps = get_camera_metrics(camera_id)
+
         event = Event(
             camera_id=camera_id,
             start=initial_time,
@@ -280,7 +320,7 @@ def send_single_event(
             print=frame_bytes,
         )
 
-        return send_event(event)
+        return send_event(event, latency, fps)
 
     except Exception as e:
         logger.error(f"Erro ao processar evento {track_id}: {e}")
@@ -402,6 +442,9 @@ def process_frame(model, stream_config: StreamConfig, frame: np.ndarray) -> None
                 scaled_frame = frame
                 scale_factor = 1.0
 
+            # Mede tempo de inferência do YOLO
+            inference_start = time.time()
+            
             results = model.track(
                 source=scaled_frame,
                 persist=True,
@@ -411,6 +454,17 @@ def process_frame(model, stream_config: StreamConfig, frame: np.ndarray) -> None
                 tracker=stream_config.tracker_model,
                 classes=class_ids,
             )
+            
+            inference_time = time.time() - inference_start
+            
+            # Atualiza métricas da câmera
+            if camera_id in camera_metrics:
+                # Define start_time no primeiro frame processado
+                if camera_metrics[camera_id]["start_time"] is None:
+                    camera_metrics[camera_id]["start_time"] = time.time()
+                
+                camera_metrics[camera_id]["frames_processed"] += 1
+                camera_metrics[camera_id]["total_inference_time"] += inference_time
 
         except Exception as e:
             logger.error(f"Erro na inferência YOLO para câmera {camera_id}: {e}")

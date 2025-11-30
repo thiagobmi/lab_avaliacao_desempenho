@@ -8,7 +8,7 @@ from app.config import settings
 logger = setup_logger("event_api")
 
 
-def send_event(event: Event) -> bool:
+def send_event(event: Event, latencia, fps) -> bool:
     """
     Envia o evento para o endpoint de eventos.
     """
@@ -28,7 +28,9 @@ def send_event(event: Event) -> bool:
             "tag": event.tag,
             "coord_initial": event.coord_initial,
             "coord_end": event.coord_end,
-            "print": print_hex,
+            "latency": latencia,
+            "fps": fps,
+            # "print": print_hex,
         }
 
         response = requests.post(
@@ -40,20 +42,24 @@ def send_event(event: Event) -> bool:
             logger.info(f"Evento enviado ID: {result.get('event_id')}")
             return True
         else:
-            logger.error(
-                f"Falha ao enviar evento para o visualizador. Código de status: {response.status_code}"
-            )
+            logger.info(event_dict)
+            # logger.error(
+            #     f"Falha ao enviar evento para o visualizador. Código de status: {response.status_code}"
+            # )
             # logger.error(f"Resposta: {response.text}")
             return False
 
     except requests.exceptions.Timeout:
         # ...
-        logger.error("Timeout ao enviar evento para o visualizador de eventos")
+        logger.info(event_dict)
+        # logger.error("Timeout ao enviar evento para o visualizador de eventos")
     except requests.exceptions.RequestException as e:
         # ...
-        logger.error(f"Erro de requisição ao enviar evento para o visualizador: {e}")
+        logger.info(event_dict)
+        # logger.error(f"Erro de requisição ao enviar evento para o visualizador: {e}")
     except Exception as e:
         # ...
-        logger.error(f"Erro geral ao enviar evento para o visualizador: {e}")
+        logger.info(event_dict)
+        # logger.error(f"Erro geral ao enviar evento para o visualizador: {e}")
 
     return False

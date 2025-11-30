@@ -92,11 +92,11 @@ async def get_camera_info(cam_id: int) -> Optional[CameraInfo]:
     Usa a API do NUV para recuperar informações de uma câmera.
     """
     # if settings.DEBUG:
-    # return CameraInfo(
-    #     camera_id=cam_id,
-    #     url=f"rtmp://localhost/stream/{cam_id}",
-    #     active=True
-    # )
+    return CameraInfo(
+        camera_id=cam_id,
+        url=f"rtmp://localhost/stream/{cam_id}",
+        active=True
+    )
 
     response = get_camera_info_api(cam_id)
 
