@@ -42,7 +42,8 @@ def send_event(event: Event, latencia, fps) -> bool:
             logger.info(f"Evento enviado ID: {result.get('event_id')}")
             return True
         else:
-            logger.info(event_dict)
+            logger.info(event_dict['fps'])
+            # logger.info(event_dict)
             # logger.error(
             #     f"Falha ao enviar evento para o visualizador. Código de status: {response.status_code}"
             # )
@@ -51,15 +52,20 @@ def send_event(event: Event, latencia, fps) -> bool:
 
     except requests.exceptions.Timeout:
         # ...
-        logger.info(event_dict)
+        # logger.info(event_dict)
+        logger.info(event_dict['fps'])
         # logger.error("Timeout ao enviar evento para o visualizador de eventos")
     except requests.exceptions.RequestException as e:
         # ...
-        logger.info(event_dict)
+
+        logger.info(event_dict['fps'])
+        # logger.info(event_dict)
         # logger.error(f"Erro de requisição ao enviar evento para o visualizador: {e}")
     except Exception as e:
         # ...
-        logger.info(event_dict)
+
+        logger.info(event_dict['fps'])
+        # logger.info(event_dict)
         # logger.error(f"Erro geral ao enviar evento para o visualizador: {e}")
 
     return False

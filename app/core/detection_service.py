@@ -44,13 +44,13 @@ def initialize_tracker_for_camera(camera_id: int) -> None:
     if camera_id not in object_trackers:
         object_trackers[camera_id] = {}
     
-    # Inicializa métricas para a câmera (start_time será definido no primeiro frame)
+    # Inicializa métricas para a câmera (start_time será definido no primeiro frame processado)
     if camera_id not in camera_metrics:
         camera_metrics[camera_id] = {
             "frames_processed": 0,
             "total_inference_time": 0.0,
-            "start_time": None,
-            "last_fps_calculation": None,
+            "first_frame_time": None,
+            "last_frame_time": None,
         }
 
 
@@ -255,18 +255,21 @@ def get_camera_metrics(camera_id: int) -> Tuple[float, float]:
     
     metrics = camera_metrics[camera_id]
     
-    # Se ainda não processou nenhum frame, retorna 0
-    if metrics["start_time"] is None or metrics["frames_processed"] == 0:
+    # Se ainda não processou frames suficientes, retorna 0
+    if metrics["first_frame_time"] is None or metrics["frames_processed"] < 2:
         return 0.0, 0.0
     
     # Calcula latência média (em ms)
     avg_latency = (metrics["total_inference_time"] / metrics["frames_processed"]) * 1000
     
-    # Calcula FPS médio desde o primeiro frame processado
-    elapsed_time = time.time() - metrics["start_time"]
+    # Calcula FPS médio baseado no intervalo entre o primeiro e último frame processado
     avg_fps = 0.0
-    if elapsed_time > 0:
-        avg_fps = metrics["frames_processed"] / elapsed_time
+    if metrics["last_frame_time"] and metrics["first_frame_time"]:
+        elapsed_time = metrics["last_frame_time"] - metrics["first_frame_time"]
+        if elapsed_time > 0:
+            # FPS = (número de frames - 1) / tempo decorrido
+            # Usamos frames_processed - 1 porque o intervalo entre N frames tem N-1 períodos
+            avg_fps = (metrics["frames_processed"] - 1) / elapsed_time
     
     return round(avg_latency, 2), round(avg_fps, 2)
 
@@ -459,10 +462,14 @@ def process_frame(model, stream_config: StreamConfig, frame: np.ndarray) -> None
             
             # Atualiza métricas da câmera
             if camera_id in camera_metrics:
-                # Define start_time no primeiro frame processado
-                if camera_metrics[camera_id]["start_time"] is None:
-                    camera_metrics[camera_id]["start_time"] = time.time()
+                current_time = time.time()
                 
+                # Define first_frame_time no primeiro frame processado
+                if camera_metrics[camera_id]["first_frame_time"] is None:
+                    camera_metrics[camera_id]["first_frame_time"] = current_time
+                
+                # Atualiza last_frame_time a cada frame
+                camera_metrics[camera_id]["last_frame_time"] = current_time
                 camera_metrics[camera_id]["frames_processed"] += 1
                 camera_metrics[camera_id]["total_inference_time"] += inference_time
 
