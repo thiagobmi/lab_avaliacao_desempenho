@@ -1,5 +1,6 @@
 from os import wait
 import threading
+import multiprocessing
 import time
 import datetime
 import cv2
@@ -534,11 +535,7 @@ def process_camera_stream(camera_info: CameraInfo, stream_config: StreamConfig) 
     """
 
     cam_id = camera_info.camera_id
-    logger.info(f"🚀 Thread da câmera {cam_id} INICIADA - vai carregar modelo agora")
-    
     local_model = get_or_load_model(stream_config.detection_model_path)
-    logger.info(f"✓ Câmera {cam_id}: modelo carregado/obtido do cache")
-    
     initialize_tracker_for_camera(cam_id)
     start_time = time.time()
 
@@ -669,14 +666,16 @@ def start_camera_processing(
 ) -> threading.Thread:
     """
     Inicia o processamento de uma câmera em uma thread separada.
+    NÃO ESPERA pela thread - retorna imediatamente.
     """
     thread = threading.Thread(
         target=process_camera_stream,
         args=(camera_info, stream_config),
-        daemon=True,  # encerra junto com o processo principal
+        daemon=True,
     )
 
     thread.start()
+    # NÃO FAZER thread.join() - isso bloquearia!
     return thread
 
 
